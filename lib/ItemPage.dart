@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import './List.dart';
 
+
 class ItemScreen extends StatelessWidget {
   var item;
   var context;
@@ -9,10 +10,10 @@ class ItemScreen extends StatelessWidget {
   Widget build (BuildContext ctxt) {
     return new Scaffold(
       appBar: new AppBar(
-        title: item.buildTitle(context),
+        title: Text(item["author"]),
       ),
       body: Center(
-        child: item.buildTitle(context)
+        child: Text(item["en"])
       ),
     );
   }

@@ -1,62 +1,72 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import './ItemPage.dart';
 
-class ListScreen extends StatelessWidget {
-  final items = List<ListItem>.generate(
-    1200,
-        (i) => i % 1 == 0
-        ? MessageItem("Item $i", null)
-    : null,
-  );
+class ListScreen extends StatefulWidget {
   @override
+  _ListState createState() => _ListState();
+}
+
+class _ListState extends State<ListScreen> {
+  Future<String> futureQuote;
+  @override
+  void initState() {
+    super.initState();
+    futureQuote = fetchQuotes();
+    print(futureQuote);
+  }
   Widget build (BuildContext ctxt) {
     return new Scaffold(
-      appBar: new AppBar(
-        title: new Text("This is a secret page"),
-      ),
-      body: Center(
-        child: ListView.builder(
-          // Let the ListView know how many items it needs to build.
-          itemCount: items.length,
-          // Provide a builder function. This is where the magic happens.
-          // Convert each item into a widget based on the type of item it is.
-          itemBuilder: (context, index) {
-            final item = items[index];
-
-            return ListTile(
-              title: item.buildTitle(context),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  new MaterialPageRoute(builder: (ctxt) => new ItemScreen(items[index], context),
-                )
-                );
-              },
-            );
-          },
+        appBar: new AppBar(
+          title: new Text("This is a secret page"),
         ),
-      )
+        body: Center(
+          child: FutureBuilder<String>(
+            future: fetchQuotes(),
+            builder: (context, quoteSnap) {
+              if (quoteSnap.hasData) {
+                List<dynamic> quotes = json.decode(quoteSnap.data);
+                return ListView.builder(
+                  itemCount: quotes.length,
+                  itemBuilder: (context, index) {
+                    final quote = quotes[index];
+                    return Card(
+                      child: ListTile(
+                        title: Text(quote["author"]),
+                        onTap: () {
+                          Navigator.push(
+                              context,
+                              new MaterialPageRoute(builder: (ctxt) => new ItemScreen(quote, context)
+                              )
+                          );
+                        }
+                      ),
+                    );
+                  },
+                );
+              } else if (quoteSnap.hasError) {
+                return Text("${quoteSnap.error}");
+              }
+
+              // By default, show a loading spinner.
+              return CircularProgressIndicator();
+            },
+          ),
+        )
     );
   }
 }
 
-/// The base class for the different types of items the list can contain.
-abstract class ListItem {
-  /// The title line to show in a list item.
-  Widget buildTitle(BuildContext context);
-
-  /// The subtitle line, if any, to show in a list item.
-  Widget buildSubtitle(BuildContext context);
-}
-
-/// A ListItem that contains data to display a message.
-class MessageItem implements ListItem {
-  final String sender;
-  final String body;
-
-  MessageItem(this.sender, this.body);
-
-  Widget buildTitle(BuildContext context) => Text(sender);
-
-  Widget buildSubtitle(BuildContext context) => Text(body);
+Future<String> fetchQuotes() async{
+  final response = await http.get('https://programming-quotes-api.herokuapp.com/quotes');
+  if (response.statusCode == 200) {
+    // If the server did return a 200 OK response,
+    // then parse the JSON.
+    return response.body;
+  } else {
+    // If the server did not return a 200 OK response,
+    // then throw an exception.
+    throw Exception('Failed to load quotes');
+  }
 }
